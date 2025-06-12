@@ -1,3 +1,4 @@
+use std::panic;
 use ::rrule::Tz;
 use chrono::{DateTime, Datelike, TimeZone, Timelike};
 use pyo3::{
@@ -77,14 +78,15 @@ fn pydatetime_to_chrono(pydatetime: &Bound<'_, PyDateTime>) -> PyResult<DateTime
 }
 
 #[pyfunction]
-fn build_rruleset(dtstart: &Bound<'_, PyDateTime>, lines: Vec<String>) -> RRuleSet {
+fn build_rruleset(dtstart: &Bound<'_, PyDateTime>, lines: Vec<String>) -> Option<RRuleSet> {
     let start = pydatetime_to_chrono(dtstart).unwrap();
 
-    let mut rruleset = ::rrule::RRuleSet::new(start);
-
-    rruleset = rruleset.set_from_string(&lines.join("\n")).unwrap();
-
-    RRuleSet(rruleset)
+    let result = panic::catch_unwind(|| {
+        let mut rruleset = ::rrule::RRuleSet::new(start);
+        rruleset = rruleset.set_from_string(&lines.join("\n")).unwrap();
+        Some(RRuleSet(rruleset))
+    });
+    result.unwrap_or(None)
 }
 
 #[pymodule]
